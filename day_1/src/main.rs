@@ -1,12 +1,20 @@
 use std::env;
 use std::fs;
 
+const DIRS: [(i32,i32); 4] = [
+    (0,1), //NORTH
+    (1,0), //EAST
+    (0,-1), //SOUTH
+    (-1,0), //WEST
+];
+
 struct Information{
    horizontal_distance: i32,
    vertical_distance: i32,
-   is_horizontal: bool,
-   is_positive: bool,
+   current_dir: i32,
+   visited: Vec<(i32,i32)>,
 }
+
 fn main() {
     let args:Vec<String> = env::args().collect();
     let file_name: &str = &args[1];
@@ -24,12 +32,14 @@ fn read_file(file_name: &str) -> String {
 fn distance_to_ebhq(steps: &String) -> i32 {
     let steps_iter = &steps.replace(','," ");
     let steps_iter = steps_iter.split_whitespace();
+
     let mut info = Information {
-        is_horizontal: false,
-        is_positive: true,
+        current_dir: 0,
         horizontal_distance: 0,
         vertical_distance: 0,
+        visited: Vec::new()
     };
+
     for i in steps_iter{
         let dir = &i[0..1];
         let n_steps: i32 = (&i[1..]).trim().parse().expect("Error parsing to number.");
@@ -38,40 +48,18 @@ fn distance_to_ebhq(steps: &String) -> i32 {
     info.horizontal_distance.abs() + info.vertical_distance.abs()
 }
 
-fn next_move(info: &mut Information, dir: &str, n_steps: i32){
-    info.is_horizontal = !info.is_horizontal;
-    if info.is_horizontal {
-        if info.is_positive {
-            info.horizontal_distance += if dir == "R" {
-                n_steps
-            } else {
-                info.is_positive = !info.is_positive;
-                -n_steps
-            };
-        } else {
-            info.horizontal_distance += if dir == "R" {
-                -n_steps
-            } else {
-                info.is_positive = !info.is_positive;
-                n_steps
-            };
-        }
-        return
-    }
-
-    if info.is_positive {
-        info.horizontal_distance += if dir == "R" {
-            info.is_positive = !info.is_positive;
-            n_steps
-        } else {
-            -n_steps
-        };
+fn next_move(info: &mut Information, dir: &str, n_steps: i32)-> bool {
+    info.current_dir = if dir == "R" {
+        (info.current_dir + 1) % DIRS.len() as i32
     } else {
-        info.horizontal_distance += if dir == "R" {
-            info.is_positive = !info.is_positive;
-            -n_steps
-        } else {
-            n_steps
-        };
+        (info.current_dir - 1).rem_euclid(DIRS.len() as i32)
+    };
+    info.horizontal_distance += DIRS[info.current_dir as usize].0 * n_steps;
+    info.vertical_distance += DIRS[info.current_dir as usize].1 * n_steps;
+    let result = &info.visited.iter().any(|(x,y)| *x == info.horizontal_distance && *y == info.vertical_distance);
+    if *result {
+        return true;
     }
+    (&mut info.visited).push((info.horizontal_distance, info.vertical_distance));
+    false
 }
